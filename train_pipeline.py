@@ -6,41 +6,34 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 import pandas as pd
 
-# Create Spark session
+
 spark = SparkSession.builder \
     .appName("MLflowTask") \
     .getOrCreate()
 
-# Sample data as Pandas DataFrame
+
 data_pd = pd.DataFrame({
     'input1': [1, 2, 3, 4, 5, 6],
     'input2': [10, 20, 30, 40, 50, 60],
     'label': [0, 0, 1, 0, 1, 1]
 })
 
-# Convert to Spark DataFrame
 data = spark.createDataFrame(data_pd)
 
-# Assemble features
 assembler = VectorAssembler(inputCols=["input1", "input2"], outputCol="features")
 data = assembler.transform(data).select("features", "label")
 
-# Train-test split
 train_data, test_data = data.randomSplit([0.8, 0.2], seed=42)
 
-# Set experiment
 mlflow.set_experiment("spark-mlflow-logreg")
 
 with mlflow.start_run():
-    # Train model
+    
     model = LogisticRegression(featuresCol='features', labelCol='label').fit(train_data)
 
-    # Safely log model
     try:
         mlflow.spark.log_model(model, "logistic-model")
-        print("✅ Model logged to MLflow")
     except Exception as e:
-        print("❌ Failed to log model to MLflow:", e)
         raise  
 
  
@@ -49,9 +42,9 @@ with mlflow.start_run():
         evaluator = BinaryClassificationEvaluator(labelCol="label", rawPredictionCol="rawPrediction")
         accuracy = evaluator.evaluate(predictions)
         mlflow.log_metric("accuracy", accuracy)
-        print(f"✅ Accuracy logged: {accuracy:.4f}")
+        print(f"Accuracy: {accuracy:.4f}")
     else:
-        print("⚠️ No test predictions to evaluate.")
+        print("No test predictions to evaluate.")
 
 
 spark.stop()
